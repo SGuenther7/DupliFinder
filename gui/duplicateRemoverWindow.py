@@ -4,18 +4,14 @@ from PyQt6.QtWidgets import (QMainWindow, QPushButton, QWidget, QLabel,
 from os.path import getsize, exists, normpath
 from os import remove, startfile
 import send2trash
+import sys
+from util import util
 
-class MainWindow(QMainWindow):
-    def __init__(self, data):
+
+class RemoverWidget(QWidget):
+
+    def __init__(self):
         super().__init__()
-
-        self.setCentralWidget(MainWidget(data))
-
-class MainWidget(QWidget):
-    def __init__(self, data):
-        super().__init__()
-
-        self.data = data
 
         layout = QVBoxLayout()
         self.setLayout(layout)
@@ -27,17 +23,16 @@ class MainWidget(QWidget):
         top_row_widget = QGroupBox()
         top_row_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         top_row_widget.setLayout(top_row)
-        
+
         btn_prev = QPushButton("Prev")
         btn_prev.clicked.connect(self.btn_prev)
         top_row.addWidget(btn_prev)
 
         self.current_idx_box = QSpinBox()
-        self.current_idx_box.setRange(1, len(self.data))
         self.current_idx_box.valueChanged.connect(self.changeIDX)
         top_row.addWidget(self.current_idx_box)
 
-        self.label_idx = QLabel(f"{self.cur_idx + 1} / {len(self.data)}")
+        self.label_idx = QLabel("")
         top_row.addWidget(self.label_idx)
 
         btn_next = QPushButton("Next")
@@ -66,6 +61,15 @@ class MainWidget(QWidget):
         self.file_container = []
 
         layout.addWidget(dupli_display_widget)
+        
+    def start(self, data):
+        super().__init__()
+
+        self.data = data
+    
+        self.current_idx_box.setRange(1, len(self.data))
+
+        self.label_idx.setText(f"{self.cur_idx + 1} / {len(self.data)}")
 
         self.validate()
 
@@ -93,11 +97,8 @@ class MainWidget(QWidget):
         self.validate()
 
     def movedToBin(self, bytes: int):
-        
-        from main import formatBytes
-
         self.bytes_deleted += bytes
-        self.results_deleted.setText(f"Moved To Bin: {formatBytes(self.bytes_deleted)}")
+        self.results_deleted.setText(f"Moved To Bin: {util.formatBytes(self.bytes_deleted)}")
 
     def validate(self, direction = 1):
 
@@ -153,12 +154,10 @@ class DupliDisplay(QWidget):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        from main import formatBytes
-
         layout.addWidget(QLabel(f"File: {self.name}"))
         layout.addWidget(QLabel(f"Path: {self.path}"))
         layout.addWidget(QLabel(f"Hash: {self.hash}"))
-        layout.addWidget(QLabel(f"Size: {formatBytes(self.file_size)}"))
+        layout.addWidget(QLabel(f"Size: {util.formatBytes(self.file_size)}"))
 
         btns = QWidget()
         layout.addWidget(btns)
@@ -183,7 +182,7 @@ class DupliDisplay(QWidget):
             # remove(self.file_path)
             send2trash.send2trash(normpath(self.file_path))
             self.parent.movedToBin(self.file_size)
-            self.parent: MainWidget
+            self.parent: RemoverWidget
             self.parent.validate()
 
     def btn_open(self):
@@ -201,8 +200,4 @@ class DupliDisplay(QWidget):
         if hasattr(other, "hash") and hasattr(other, "size"):
             return self.hash == other.hash and self.size == other.hash
         return False
-
-if __name__ == "__main__":
-    from main import start
-    start()
     

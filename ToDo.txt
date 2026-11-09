@@ -1,0 +1,8 @@
+main:
+    - make new Widow showing progress for:
+        - validating existing hashes
+        - calculating new hashes
+    - move calculating to separate thread
+
+startupWindow:
+    - make list scrollable

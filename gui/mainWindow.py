@@ -1,10 +1,9 @@
 
-from PyQt6.QtWidgets import (QMainWindow, QPushButton, QWidget, QLabel,
-    QVBoxLayout, QHBoxLayout, QGroupBox, QSizePolicy, QSpinBox)
+from PyQt6.QtWidgets import (QMainWindow, QPushButton, QWidget, QVBoxLayout, QApplication)
+from os.path import exists
 
 import json
-from gui import (startupWindow, duplicateRemoverWindow)
-from os.path import exists
+from gui import (duplicateRemoverWidget, startupWidget, infoWidget)
 from util import util
 
 class MainWindow(QMainWindow):
@@ -28,26 +27,51 @@ class MainWidget(QWidget):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        self.startup = startupWindow.StartUpWidget(self.config)
+        self.startup = startupWidget.StartUpWidget(self.config)
         layout.addWidget(self.startup)
 
-        self.remover = duplicateRemoverWindow.RemoverWidget()
+        self.infoWidget = infoWidget.InfoWidget()
+        self.infoWidget.hide()
+        layout.addWidget(self.infoWidget)
+
+        self.remover = duplicateRemoverWidget.RemoverWidget()
         self.remover.hide()
         layout.addWidget(self.remover)
                 
-        start_btn = QPushButton("Start")
-        start_btn.clicked.connect(self._start)
-        layout.addWidget(start_btn)
+        self.start_btn = QPushButton("Start")
+        self.start_btn.clicked.connect(self._start)
+        layout.addWidget(self.start_btn)
+
+        self.results_file = self.config.get("results_file", "results.json")
+        # self.results_file = self.config.get("results_file", "results-TEST.json")
+        self.hashes = dict()
+        self.dupes = dict()
+
+        app = QApplication.instance()
+        for i in range(0, 100):
+            app.processEvents()
+
+        self.resize(self.minimumSizeHint())
 
     def _start(self):
-
+        self.start_btn.hide()
         self.startup.hide()
+        self.infoWidget.show()
+
+        self.work()
+        
+        self.infoWidget.hide()
+        self.remover.show()
+        self.remover.start(self.dupes)
+
+    def work(self):
         directories_to_check = self.startup.getList()
 
         # getting targets from config
         targets = self.config.get("targets", [])
         for dir in directories_to_check:
             targets.append(dir)
+
         targets = list(set(targets))
         self.config["targets"] = targets
 
@@ -55,27 +79,49 @@ class MainWidget(QWidget):
         with open(self.config_file, "w") as file:
             json.dump(self.config, file)
 
-        # get name of results file from config
-        results_file = self.config.get("results_file", "results.json")
+        self.infoWidget.updateTargets(f"targets: {targets}")
 
-        print(targets)
+        self.infoWidget.updateCurrentState("loading hashes")
+        self.hashes = util.loadCache(self.results_file)
 
-        print("loading hashes")
-        hashes = util.loadCache(results_file)
+        self._validateCache()
 
-        print("validating saved hashes")
-        hashes = util.validateCache(hashes)
-        util.saveCache(hashes, results_file)
+        self._addingHashes(directories_to_check)
 
-        print("calculating new hashes")
-        hashes = util.addNewHashes(directories_to_check, hashes)
-        util.saveCache(hashes, results_file)
+        self.hashes = util.orderDupes(self.hashes)
+        util.saveCache(self.hashes, self.results_file)
 
-        print("ordering dupes")
-        hashes = util.orderDupes(hashes)
-        util.saveCache(hashes, results_file)
+        # get only duplicates
+        self.dupes = util.getDupes(self.hashes)
 
-        dupes = util.getDupes(hashes)
+    def _validateCache(self):
+        self.infoWidget.updateCurrentState("validating saved hashes")
 
-        self.remover.show()
-        self.remover.start(dupes)
+        data = util.validateCache(self.hashes)
+        app = QApplication.instance()
+
+        for updated_hashes, current_status_str in data:
+            self.infoWidget.updateStatusLoadedHashes(current_status_str)
+            self.hashes = updated_hashes
+    
+            # process event loop to prevent freezing
+            for i in range(0, 10):
+                app.processEvents()
+
+        util.saveCache(self.hashes, self.results_file)
+
+    def _addingHashes(self, directories_to_check):
+        self.infoWidget.updateCurrentState("calculating new hashes")
+
+        data = util.addNewHashes(directories_to_check, self.hashes, self.results_file)
+        app = QApplication.instance()
+
+        for (updated_hashes, current_status_str) in data:
+            self.infoWidget.updateStatusAddedHashes(current_status_str)
+            self.hashes = updated_hashes
+            
+            # process event loop to prevent freezing
+            for i in range(0, 10):
+                app.processEvents()
+
+        util.saveCache(self.hashes, self.results_file)

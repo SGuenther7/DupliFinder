@@ -1,10 +1,10 @@
-from PyQt6.QtWidgets import (QMainWindow, QPushButton, QWidget, QLabel,
+from PyQt6.QtWidgets import (QPushButton, QWidget, QLabel,
     QVBoxLayout, QHBoxLayout, QGroupBox, QSizePolicy, QSpinBox)
 
 from os.path import getsize, exists, normpath
 from os import remove, startfile
 import send2trash
-import sys
+
 from util import util
 
 
@@ -66,11 +66,8 @@ class RemoverWidget(QWidget):
         super().__init__()
 
         self.data = data
-    
         self.current_idx_box.setRange(1, len(self.data))
-
         self.label_idx.setText(f"{self.cur_idx + 1} / {len(self.data)}")
-
         self.validate()
 
     def btn_next(self):
@@ -179,7 +176,6 @@ class DupliDisplay(QWidget):
 
     def btn_delete(self):
         if exists(self.file_path):
-            # remove(self.file_path)
             send2trash.send2trash(normpath(self.file_path))
             self.parent.movedToBin(self.file_size)
             self.parent: RemoverWidget
@@ -187,10 +183,6 @@ class DupliDisplay(QWidget):
 
     def btn_open(self):
         if exists(self.file_path):
-            # try:
-            #     subprocess.run(['start', f"'{self.file_path}'"], check=True)
-            # except:
-            #     print(f"{self.file_path} -> {exists(self.file_path)}")
             startfile(self.file_path, 'open')
 
     def btn_keep_only_this(self):

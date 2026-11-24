@@ -40,22 +40,37 @@ def loadCache(file: str) -> dict:
     return hashes
 
 # deletes hashes from deleted/moved files
-def validateCache(dictionary: dict) -> dict:
+def validateCache(dictionary: dict):
 
     new_hashes = dict()
+    status_str = "no cached hashes"
+    status_str_format = "Hashes processed: {:d} | still valid: {:d} ({:.2f}%)"
 
+    items = 0
+    loaded = 0
+    next_yield = 500
     for hash in dictionary:
 
         new_values = [val for val in dictionary[hash] if Path(val).exists()]
-
+        items += 1
         if len(new_values) > 0:
             new_hashes[hash] = new_values
+            loaded += 1
         # else:
             # all files were deleted/moved
             # -> do not add
 
-    return new_hashes
+        if items % next_yield == 0:
 
+            status_str = status_str_format.format(items, loaded, loaded/items*100)
+            yield new_hashes, status_str
+
+    if items > 0:
+        status_str = status_str_format.format(items, loaded, loaded/items*100)
+    
+    return new_hashes, status_str
+
+## get only duplicates
 def getDupes(hashes: dict):
     # single = dict()
     # multiple = dict()
@@ -81,18 +96,22 @@ def getDupes(hashes: dict):
 
     return dupes
 
-def addNewHashes(target_dirs: list[str], hashes:dict) -> dict:
+## calculate new hashes from found files
+def addNewHashes(target_dirs: list[str], hashes:dict, results_file:str):
     file_paths = []
 
     for path in target_dirs:
         for (root, dirs, files) in os.walk(path):
             file_paths += [root + "/" + f for f in files]
 
-    already_hashed = [j for sub in hashes.values() for j in sub]
+    already_hashed = set([j for sub in hashes.values() for j in sub])
     to_hash = [i for i in file_paths if i not in already_hashed]
     
     print("---------------")
     print(f"Loaded {len(already_hashed)} cached hashes")
+
+    status_str = "no hashes added"
+    status_str_format = "{:d} / {:d} ({:.2f}%) | current filesize: {}"
 
     items = 0
     amount = len(to_hash)
@@ -103,12 +122,14 @@ def addNewHashes(target_dirs: list[str], hashes:dict) -> dict:
         with open(file.replace("\\", "/"), "rb") as f:
             hash = hashlib.file_digest(f, "sha256").hexdigest()
             items += 1
-            print(f"  {items} / {amount} ({int((items/amount) * 100)}%) {util.formatBytes(os.path.getsize(file))}"
-                  + "       ", end="\r\r")
+            # print(f"  {items} / {amount} ({int((items/amount) * 100)}%) {formatBytes(os.path.getsize(file))}"
+            #       + "       ", end="\r\r")
 
             tmp = hashes.get(hash, [])
             tmp += [file]            
             hashes[hash] = tmp
+
+            yield hashes, status_str
 
         # save between every 10 GB processed
         hashed_bytes += os.path.getsize(file)
@@ -116,7 +137,9 @@ def addNewHashes(target_dirs: list[str], hashes:dict) -> dict:
             hashed_bytes = 0
             saveCache(hashes, results_file)
 
-    return hashes
+    if amount > 0:
+        status_str = status_str_format.format(items, amount, items/amount * 100, "")
+    return hashes, status_str
 
 def saveCache(cache:dict, file: str) -> None:
 
@@ -166,7 +189,7 @@ def displayDupes(dupes: dict, filter: list[str], display_min_size: int) -> None:
 
     file_filtered.close()
 
-
+## move duplicates to front
 def orderDupes(dupes: dict) -> dict:
     mult = dict()
     single = dict()

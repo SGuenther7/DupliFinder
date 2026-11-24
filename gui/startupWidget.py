@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import (QMainWindow, QPushButton, QWidget, QLabel,
+from PyQt6.QtWidgets import (QPushButton, QWidget, QLabel, QApplication,
     QVBoxLayout, QHBoxLayout, QGroupBox, QSizePolicy, QSpinBox, QCheckBox, QFileDialog,
     QScrollArea, QLineEdit)
 
@@ -6,9 +6,6 @@ from PyQt6.QtCore import Qt
 
 from os.path import getsize, exists, normpath
 from os import remove, startfile
-import send2trash
-
-from util import util
 
 
 class ListContainer(QScrollArea):
@@ -52,6 +49,7 @@ class DirectoryToCheck(QWidget):
         self.setLayout(layout)
 
         self.check = QCheckBox()
+        self.check.click()
         layout.addWidget(self.check)
 
         self.label = QLabel(self.path)
@@ -109,19 +107,19 @@ class StartUpWidget(QWidget):
         for target in targets:
             self.addItem(target)
 
+        app = QApplication.instance()
+        for i in range(0, 100):
+            app.processEvents()
+
+        self.resize(self.minimumSizeHint())
+
     def _pickDirectory(self):
         directory = QFileDialog.getExistingDirectory()
         self.inserter_input.setText(directory)
 
     def _addDirectory(self):
-        # if exists(self.inserter_input.text()):
-        #     self.addItem(self.inserter_input.text())
-
-        self.addItem("test1")
-        self.addItem("test2")
-        self.addItem("test3")
-        self.addItem("test4")
-        self.inserter_input.clear()
+        if exists(self.inserter_input.text()):
+            self.addItem(self.inserter_input.text())
 
     def addItem(self, path: str):
         item = DirectoryToCheck(path, self)

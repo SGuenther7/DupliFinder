@@ -4,9 +4,7 @@ from PyQt6.QtWidgets import (QPushButton, QWidget, QLabel, QApplication,
 
 from PyQt6.QtCore import Qt
 
-from os.path import getsize, exists, normpath
-from os import remove, startfile
-
+from os.path import exists, isdir
 
 class ListContainer(QScrollArea):
 
@@ -26,6 +24,7 @@ class ListContainer(QScrollArea):
         # self.layout.setSpacing(-10)
         # QVBoxLayout().setSpacing(0)
         # self.layout.
+
 
     def addItem(self, item: QWidget):
         self.list.append(item)
@@ -112,6 +111,21 @@ class StartUpWidget(QWidget):
             app.processEvents()
 
         self.resize(self.minimumSizeHint())
+
+        self.setAcceptDrops(True)        
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        for url in event.mimeData().urls():
+            path_to_file = url.path()[1:]
+
+            if isdir(path_to_file):
+                self.addItem(path_to_file)
 
     def _pickDirectory(self):
         directory = QFileDialog.getExistingDirectory()

@@ -80,6 +80,7 @@ class StartUpWidget(QWidget):
     def __init__(self, config):
         super().__init__()
 
+        self.config = config
         layout = QVBoxLayout()
         self.setLayout(layout)
 
@@ -102,9 +103,10 @@ class StartUpWidget(QWidget):
         inserter_btn_add.clicked.connect(self._addDirectory)
         inserter_layout.addWidget(inserter_btn_add)
 
-        targets = config.get("targets", [])
+        targets = self.config.get("targets", [])
         for target in targets:
             self.addItem(target)
+        self.config["targets"] = targets 
 
         app = QApplication.instance()
         for i in range(0, 100):
@@ -141,6 +143,10 @@ class StartUpWidget(QWidget):
 
     def removeItem(self, item: DirectoryToCheck):
         self.list.removeItem(item)
+
+        # remove item from config file
+        if item.getPath() in self.config["targets"]:
+            self.config["targets"].remove(item.getPath())
 
     def getList(self) -> list[str]:
         return self.list.getList()

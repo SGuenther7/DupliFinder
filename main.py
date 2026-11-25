@@ -15,8 +15,8 @@ def showApp(config_file: str) -> None:
 
 def start() -> None:
 
-    showApp("config.json")
-    # showApp("config-TEST.json")
+    showApp("./data/config.json")
+    # showApp("./data/config-TEST.json")
 
 if __name__ == "__main__":
     start()

@@ -1,6 +1,7 @@
 
 from PyQt6.QtWidgets import (QMainWindow, QPushButton, QWidget, QVBoxLayout, QApplication)
 from os.path import exists
+from os import makedirs
 
 import json
 from gui import (duplicateRemoverWidget, startupWidget, infoWidget)
@@ -23,6 +24,8 @@ class MainWidget(QWidget):
                 self.config = json.load(f)
         else:
             self.config = dict()
+            if not exists("./data"):
+                makedirs("./data")
 
         layout = QVBoxLayout()
         self.setLayout(layout)
@@ -37,13 +40,13 @@ class MainWidget(QWidget):
         self.remover = duplicateRemoverWidget.RemoverWidget()
         self.remover.hide()
         layout.addWidget(self.remover)
-                
+
         self.start_btn = QPushButton("Start")
         self.start_btn.clicked.connect(self._start)
         layout.addWidget(self.start_btn)
 
-        self.results_file = self.config.get("results_file", "results.json")
-        # self.results_file = self.config.get("results_file", "results-TEST.json")
+        self.results_file = self.config.get("results_file", "./data/results.json")
+        # self.results_file = self.config.get("results_file", "./data/results-TEST.json")
         self.hashes = dict()
         self.dupes = dict()
 
@@ -54,18 +57,26 @@ class MainWidget(QWidget):
         self.resize(self.minimumSizeHint())
 
     def _start(self):
+
         self.start_btn.hide()
         self.startup.hide()
         self.infoWidget.show()
 
         self.work()
         
-        self.infoWidget.hide()
-        self.remover.show()
-        self.remover.start(self.dupes)
+        if len(self.dupes) > 0:
+            self.infoWidget.hide()
+            self.remover.show()
+            self.remover.start(self.dupes)
+        else:
+            self.infoWidget.updateCurrentState("Done")
+            self.infoWidget.updateStatusLoadedHashes("No Duplicates in target directories detected")
+            self.infoWidget.updateStatusAddedHashes("")
 
     def work(self):
         directories_to_check = self.startup.getList()
+        # if len(directories_to_check) == 0:
+        #     return
 
         # getting targets from config
         targets = self.config.get("targets", [])

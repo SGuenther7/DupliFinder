@@ -10,7 +10,8 @@ class ListContainer(QScrollArea):
 
     def __init__(self):
         super().__init__()
-        self.list=[]
+        
+        self.itemList = []
        
         self.setWidgetResizable(True)
         scroll_list = QWidget(self)
@@ -24,17 +25,19 @@ class ListContainer(QScrollArea):
         self.setWidget(scroll_list)
 
     def addDirectory(self, item: 'DirectoryToCheck'):
-        print(f"added: {item.getPath()}")
         self.layout.addWidget(item)
-        self.list.append(item)
+        self.itemList.append(item)
 
     def removeDirectory(self, item):
         print(f"removing: {item.getPath()}")
         self.layout.removeWidget(item)
-        self.list.remove(item)
+        self.itemList.remove(item)
 
-    def getList(self) -> list[str]:
-        return [item.getPath() for item in self.list if item.isChecked()]
+    def getChecked(self) -> list[str]:
+        return [item.getPath() for item in self.itemList if item.isChecked()]
+
+    def getItems(self) -> list['DirectoryToCheck']:
+        return self.itemList
 
 class DirectoryToCheck(QWidget):
     def __init__(self, directory_path, parent):
@@ -49,6 +52,7 @@ class DirectoryToCheck(QWidget):
         self.check = QCheckBox()
         self.check.click()
         layout.addWidget(self.check)
+        self.check.clicked.connect(self._onClickCheckBox)
 
         # label to display this items target directory
         self.label = QLabel(self.path)
@@ -80,6 +84,9 @@ class DirectoryToCheck(QWidget):
         self.parent: StartUpWidget
         self.parent.removeDirectory(self)
 
+    def _onClickCheckBox(self):
+        self.parent.validate_toggle_btn()
+
     def isChecked(self):
         return self.check.isChecked()
 
@@ -94,15 +101,20 @@ class StartUpWidget(QWidget):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        self.list = ListContainer()
-        layout.addWidget(self.list)
+        self.itemList = ListContainer()
+        layout.addWidget(self.itemList)
 
         inserter = QWidget()
         inserter_layout = QHBoxLayout()
         inserter.setLayout(inserter_layout)
         layout.addWidget(inserter)
+
+        self.check_uncheck_all_btn = QPushButton("Uncheck All")
+        self.check_uncheck_all_btn.clicked.connect(self._toggle_all_entries)
+        layout.addWidget(self.check_uncheck_all_btn)
         
-        self.inserter_input = QLineEdit("Test")
+        self.inserter_input: QLineEdit = QLineEdit()
+        self.inserter_input.setPlaceholderText("input directory to check")
         inserter_layout.addWidget(self.inserter_input)
 
         inserter_btn_pick = QPushButton("Pick Directory")
@@ -142,15 +154,38 @@ class StartUpWidget(QWidget):
             self.addDirectory(self.inserter_input.text())
 
     def addDirectory(self, path: str):
-        self.list.addDirectory(DirectoryToCheck(path, self))
+        self.itemList.addDirectory(DirectoryToCheck(path, self))
 
     def removeDirectory(self, item: DirectoryToCheck):       
-        self.list.removeDirectory(item)
+        self.itemList.removeDirectory(item)
 
         # remove target directory from config file
         if item.getPath() in self.config["targets"]:
             self.config["targets"].remove(item.getPath())
 
     def getList(self) -> list[str]:
-        return self.list.getList()
-    
+        return self.itemList.getChecked()
+
+    def validate_toggle_btn(self) -> None:
+        items: list[DirectoryToCheck] = self.itemList.getItems()
+        uncheck_all = [item.isChecked() for item in items].count(True) == len(items) 
+
+        if uncheck_all:
+            self.check_uncheck_all_btn.setText("Uncheck All")
+        else:
+            self.check_uncheck_all_btn.setText("Check All")
+
+    def _toggle_all_entries(self) -> None:
+        items: list[DirectoryToCheck] = self.itemList.getItems()
+        uncheck_all = [item.isChecked() for item in items].count(True) == len(items) 
+
+        if uncheck_all:
+            self.check_uncheck_all_btn.setText("Uncheck All")
+        else:
+            self.check_uncheck_all_btn.setText("Check All")
+
+        for item in items:
+            item: DirectoryToCheck
+            if item.isChecked() == uncheck_all:
+                item.check.click()
+

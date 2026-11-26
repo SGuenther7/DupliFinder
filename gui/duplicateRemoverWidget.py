@@ -79,8 +79,10 @@ class RemoverWidget(QWidget):
         self.validate(-1)
 
     def changeIDX(self, newVal):
+
+        scroll_direction = newVal-1 - self.cur_idx
         self.cur_idx = newVal - 1
-        self.validate()
+        self.validate(scroll_direction)
 
     def deleteAllExcept(self, fileToKeep: "DupliDisplay"):
         deleted_size = 0
@@ -98,12 +100,13 @@ class RemoverWidget(QWidget):
         self.results_deleted.setText(f"Moved To Bin: {util.formatBytes(self.bytes_deleted)}")
 
     def validate(self, direction = 1):
+        print(f"idx: {self.cur_idx} | direction: {direction}")
 
         for widget in self.file_container:
             self.dupli_display.removeWidget(widget)
 
         self.file_container.clear()
-
+ 
         retries = 0
         # while len([f for f in self.data[list(self.data)[self.cur_idx]] if exists(f)]) < 2:
 
@@ -120,7 +123,8 @@ class RemoverWidget(QWidget):
                 return
 
         # self.current_idx_box.setValue(self.cur_idx + 1)
-        self.label_idx.setText(f"{self.cur_idx + 1} / {len(self.data)}")
+        ## label for current entry
+        self.label_idx.setText(f"Current Entry: {self.cur_idx + 1} / {len(self.data)}")
         
         for file in self.data[list(self.data)[self.cur_idx]]:
             if exists(file):

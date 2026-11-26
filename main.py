@@ -2,13 +2,14 @@
 from PyQt6.QtWidgets import QApplication
 from gui import mainWindow
 
+CURRENT_VERSION = "v1.0"
 
 def showApp(config_file: str) -> None:
     app = QApplication([])
 
     window = mainWindow.MainWindow(config_file)
-    window.setMinimumSize(800, 500)
-    window.setWindowTitle("DupliChecker")
+    window.resize(800, 500)
+    window.setWindowTitle(f"DupliChecker {CURRENT_VERSION}")
     window.show()
 
     app.exec()

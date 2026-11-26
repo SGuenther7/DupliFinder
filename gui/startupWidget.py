@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (QPushButton, QWidget, QLabel, QApplication,
 
 from PyQt6.QtCore import Qt
 
-from os.path import exists, isdir
+from os.path import exists
 
 class ListContainer(QScrollArea):
 
@@ -12,6 +12,7 @@ class ListContainer(QScrollArea):
         super().__init__()
         
         self.itemList = []
+        self.current_paths = set()
        
         self.setWidgetResizable(True)
         scroll_list = QWidget(self)
@@ -25,13 +26,19 @@ class ListContainer(QScrollArea):
         self.setWidget(scroll_list)
 
     def addDirectory(self, item: 'DirectoryToCheck'):
-        self.layout.addWidget(item)
-        self.itemList.append(item)
+        if item.getPath() not in self.current_paths:
+            self.current_paths.add(item.getPath())
+            self.layout.addWidget(item)
+            self.itemList.append(item)
 
-    def removeDirectory(self, item):
-        print(f"removing: {item.getPath()}")
+    def removeDirectory(self, item: 'DirectoryToCheck'):
+        if item.getPath() in self.current_paths:
+            self.current_paths.remove(item.getPath())
+
         self.layout.removeWidget(item)
         self.itemList.remove(item)
+        item.hide()
+        item.deleteLater()
 
     def getChecked(self) -> list[str]:
         return [item.getPath() for item in self.itemList if item.isChecked()]
@@ -142,7 +149,7 @@ class StartUpWidget(QWidget):
         for url in event.mimeData().urls():
             path_to_file = url.path()[1:]
 
-            if isdir(path_to_file):
+            if exists(path_to_file):
                 self.addDirectory(path_to_file)
 
     def _pickDirectory(self):

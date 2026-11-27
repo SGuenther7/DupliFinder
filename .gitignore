@@ -2,6 +2,10 @@
 __pycache__
 gui/__pycache__
 util/__pycache__
+
 config.json
 filtered.txt
 results.json
+dist
+build
+data
